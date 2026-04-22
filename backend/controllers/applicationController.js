@@ -64,8 +64,6 @@ exports.applyToCompany = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-// ✅ UPDATED STATUS LOGIC WITH AUDIT LOG
 exports.updateApplicationStatus = async (req, res) => {
   console.log("🔥 Update route hit", req.params.id);
 
@@ -99,13 +97,8 @@ exports.updateApplicationStatus = async (req, res) => {
 
       const currentApp = existingApp.rows[0];
 
-      // Block if already selected
-      if (currentApp.status === "selected") {
-        await client.query("ROLLBACK");
-        return res.status(400).json({
-          message: "Cannot modify an already selected application",
-        });
-      }
+      // ❌ REMOVE THIS BLOCK (we now allow editing)
+      // if (currentApp.status === "selected") { ... }
 
       // Block same status rewrite
       if (currentApp.status === status) {
@@ -115,22 +108,10 @@ exports.updateApplicationStatus = async (req, res) => {
         });
       }
 
-      // If selecting → ensure student not already placed
-      if (status === "selected") {
-        const studentCheck = await client.query(
-          "SELECT is_placed FROM students WHERE id = $1",
-          [currentApp.student_id],
-        );
+      const previousStatus = currentApp.status;
+      const studentId = currentApp.student_id;
 
-        if (studentCheck.rows[0].is_placed) {
-          await client.query("ROLLBACK");
-          return res.status(400).json({
-            message: "Student is already placed",
-          });
-        }
-      }
-
-      // 2️⃣ Update status
+      // 2️⃣ Update current application
       const appResult = await client.query(
         `UPDATE applications
          SET status = $1, updated_at = CURRENT_TIMESTAMP
@@ -141,36 +122,72 @@ exports.updateApplicationStatus = async (req, res) => {
 
       const application = appResult.rows[0];
 
-      // 3️⃣ Automation if selected
+      // 🔥 CASE 1: If NEW status = selected
       if (status === "selected") {
+
+        // Mark student placed
         await client.query(
           `UPDATE students
            SET is_placed = true,
                placed_at = CURRENT_TIMESTAMP
            WHERE id = $1`,
-          [application.student_id],
+          [studentId],
         );
 
+        // Reject all other applications
+        await client.query(
+          `UPDATE applications
+           SET status = 'rejected'
+           WHERE student_id = $1 AND id != $2`,
+          [studentId, id],
+        );
+
+        // Insert into alumni
         await client.query(
           `INSERT INTO alumni (student_id, current_company)
            VALUES ($1, (
              SELECT name FROM companies WHERE id = $2
            ))
-           ON CONFLICT (student_id) DO NOTHING`,
-          [application.student_id, application.company_id],
+           ON CONFLICT (student_id) DO UPDATE
+           SET current_company = EXCLUDED.current_company`,
+          [studentId, application.company_id],
+        );
+      }
+
+      // 🔥 CASE 2: If changing FROM selected → something else
+      if (previousStatus === "selected" && status !== "selected") {
+
+        // Undo placement
+        await client.query(
+          `UPDATE students
+           SET is_placed = false,
+               placed_at = NULL
+           WHERE id = $1`,
+          [studentId],
+        );
+
+        // Remove from alumni
+        await client.query(
+          `DELETE FROM alumni WHERE student_id = $1`,
+          [studentId],
+        );
+
+        // Revert other applications to pending
+        await client.query(
+          `UPDATE applications
+           SET status = 'pending'
+           WHERE student_id = $1 AND id != $2`,
+          [studentId],
         );
       }
 
       // 4️⃣ AUDIT LOG 🔥
-      console.log("About to insert audit log");
-      console.log("req.user:", req.user);
-
       await client.query(
         `INSERT INTO audit_logs (user_id, action, entity, entity_id)
          VALUES ($1, $2, $3, $4)`,
         [
           req.user.id,
-          `STATUS_CHANGED_TO_${status.toUpperCase()}`,
+          `STATUS_CHANGED_${previousStatus}_TO_${status}`,
           "APPLICATION",
           id,
         ],
@@ -179,47 +196,51 @@ exports.updateApplicationStatus = async (req, res) => {
       await client.query("COMMIT");
 
       res.json({ message: "Application status updated successfully" });
+
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
     } finally {
       client.release();
     }
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // Get All Applications (Pagination + Filters)
 exports.getAllApplications = async (req, res) => {
   try {
     const { status, company_id, branch, page = 1, limit = 10 } = req.query;
 
     const offset = (page - 1) * limit;
+    // backend/controllers/applicationController.js
+    // In getAllApplications, update the query SELECT block — add s.email after s.name
 
     let query = `
-      SELECT 
-        a.id AS application_id,
-        a.status,
-        a.applied_at,
+  SELECT
+    a.id        AS application_id,
+    a.status,
+    a.applied_at,
 
-        s.roll_no,
-        s.name AS student_name,
-        s.branch,
-        s.cgpa,
-        s.is_placed,
+    s.roll_no,
+    s.name      AS student_name,
+    s.email,
+    s.branch,
+    s.cgpa,
+    s.is_placed,
 
-        c.id AS company_id,
-        c.name AS company_name,
-        c.role,
-        c.ctc
+    c.id        AS company_id,
+    c.name      AS company_name,
+    c.role,
+    c.ctc
 
-      FROM applications a
-      JOIN students s ON a.student_id = s.id
-      JOIN companies c ON a.company_id = c.id
-      WHERE 1=1
-    `;
+  FROM applications a
+  JOIN students s ON a.student_id = s.id
+  JOIN companies c ON a.company_id = c.id
+  WHERE 1=1
+`;
 
     const values = [];
 
@@ -292,7 +313,7 @@ exports.getApplicationById = async (req, res) => {
       JOIN companies c ON a.company_id = c.id
       WHERE a.id = $1
       `,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
@@ -300,7 +321,6 @@ exports.getApplicationById = async (req, res) => {
     }
 
     res.json(result.rows[0]);
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

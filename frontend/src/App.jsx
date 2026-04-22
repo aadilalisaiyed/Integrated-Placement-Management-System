@@ -1,40 +1,61 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Companies from "./pages/Companies";
-import Applications from "./pages/Applications";
-import Students from "./pages/Students";
-import PublicApply from "./pages/PublicApply";
-import ProtectedRoute from "./components/ProtectedRoute";
+// frontend/src/App.jsx
+
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute'
+
+import Login        from './pages/Login'
+import Dashboard    from './pages/Dashboard'
+import Companies    from './pages/Companies'
+import Applications from './pages/Applications'
+import Students     from './pages/Students'
+import Apply        from './pages/Apply'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Public */}
-        <Route path="/apply" element={<PublicApply />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Protected */}
-        <Route
-          path="/dashboard"
-          element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
-        />
-        <Route
-          path="/companies"
-          element={<ProtectedRoute><Companies /></ProtectedRoute>}
-        />
-        <Route
-          path="/applications"
-          element={<ProtectedRoute><Applications /></ProtectedRoute>}
-        />
-        <Route
-          path="/students"
-          element={<ProtectedRoute><Students /></ProtectedRoute>}
-        />
+        {/* Root redirect */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Admin + Coordinator */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute roles={['admin', 'coordinator']}>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/companies" element={
+          <ProtectedRoute roles={['admin', 'coordinator']}>
+            <Companies />
+          </ProtectedRoute>
+        } />
+        <Route path="/applications" element={
+          <ProtectedRoute roles={['admin', 'coordinator']}>
+            <Applications />
+          </ProtectedRoute>
+        } />
+        <Route path="/students" element={
+          <ProtectedRoute roles={['admin', 'coordinator']}>
+            <Students />
+          </ProtectedRoute>
+        } />
+
+        {/* Student — login required per confirmed spec */}
+        <Route path="/apply" element={
+          <ProtectedRoute roles={['student']}>
+            <Apply />
+          </ProtectedRoute>
+        } />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+
       </Routes>
     </BrowserRouter>
-  );
+  )
 }
 
-export default App;
+export default App
