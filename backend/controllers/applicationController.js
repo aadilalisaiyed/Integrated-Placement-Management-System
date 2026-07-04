@@ -326,3 +326,50 @@ exports.getApplicationById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// Add to bottom of applicationController.js
+
+exports.getMyApplications = async (req, res) => {
+  try {
+    // Get student's email from users table
+    const userResult = await pool.query(
+      'SELECT email FROM users WHERE id = $1',
+      [req.user.id]
+    )
+
+    if (userResult.rows.length === 0)
+      return res.status(404).json({ message: 'User not found' })
+
+    const email = userResult.rows[0].email
+
+    const result = await pool.query(
+      `SELECT
+        a.id          AS application_id,
+        a.status,
+        a.applied_at,
+
+        s.roll_no,
+        s.name        AS student_name,
+        s.email,
+        s.branch,
+        s.cgpa,
+
+        c.id          AS company_id,
+        c.name        AS company_name,
+        c.role,
+        c.ctc,
+        c.drive_date
+
+       FROM applications a
+       JOIN students s ON a.student_id = s.id
+       JOIN companies c ON a.company_id = c.id
+       WHERE s.email = $1
+       ORDER BY a.applied_at DESC`,
+      [email]
+    )
+
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+}

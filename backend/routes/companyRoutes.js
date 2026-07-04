@@ -1,4 +1,4 @@
-// backend/routes/companyRoutes.js
+// backend/routes/companyRoutes.js — replace entire file
 
 const express = require('express')
 const router  = express.Router()
@@ -12,11 +12,12 @@ const {
 
 const { verifyToken, authorizeRole } = require('../middleware/authMiddleware')
 
-const guard = [verifyToken, authorizeRole('admin', 'coordinator')]
+// Any logged-in user can view companies (admin, coordinator, student)
+router.get('/', verifyToken, getCompanies)
 
-router.get('/',      ...guard, getCompanies)
-router.post('/',     ...guard, createCompany)
-router.put('/:id',   ...guard, updateCompany)
-router.delete('/:id',...guard, deleteCompany)
+// Only admin and coordinator can create, edit, delete
+router.post('/',      verifyToken, authorizeRole('admin', 'coordinator'), createCompany)
+router.put('/:id',    verifyToken, authorizeRole('admin', 'coordinator'), updateCompany)
+router.delete('/:id', verifyToken, authorizeRole('admin', 'coordinator'), deleteCompany)
 
 module.exports = router

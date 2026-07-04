@@ -24,32 +24,11 @@ const StatusBadge = ({ status }) => {
   )
 }
 
-const StatusSelect = ({ value, onChange, loading }) => (
-  <select
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    className="
-      text-xs font-semibold px-2 py-1.5 rounded-lg
-      bg-surface-container text-on-surface
-      outline-none border-2 border-transparent
-      focus:border-primary/30
-      transition-all duration-200
-      disabled:opacity-50 disabled:cursor-not-allowed
-      cursor-pointer
-    "
-  >
-    <option value="pending">Pending</option>
-    <option value="selected">Selected</option>
-    <option value="rejected">Rejected</option>
-  </select>
-)
-
 // ── Main Component ────────────────────────────────────────
 const Applications = () => {
   const [applications, setApplications] = useState([])
   const [companies, setCompanies]       = useState([])
   const [loading, setLoading]           = useState(true)
-  const [updatingId, setUpdatingId]     = useState(null)
   const [error, setError]               = useState('')
 
   // Filters
@@ -64,14 +43,12 @@ const Applications = () => {
   const [total, setTotal] = useState(0)
   const LIMIT = 10
 
-  // Fetch companies for filter dropdown
   useEffect(() => {
     api.get('/companies')
       .then(({ data }) => setCompanies(data))
       .catch(() => {})
   }, [])
 
-  // Fetch applications
   const fetchApplications = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -95,30 +72,9 @@ const Applications = () => {
 
   useEffect(() => { fetchApplications() }, [fetchApplications])
 
-  // Reset to page 1 when filters change
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }))
     setPage(1)
-  }
-
-  // Update application status
-  const handleStatusChange = async (applicationId, newStatus) => {
-    setUpdatingId(applicationId)
-    try {
-      await api.put(`/applications/${applicationId}`, { status: newStatus })
-      // Update locally so UI reflects instantly
-      setApplications(prev =>
-        prev.map(a =>
-          a.application_id === applicationId
-            ? { ...a, status: newStatus }
-            : a
-        )
-      )
-    } catch (err) {
-      alert(err.response?.data?.message || 'Could not update status')
-    } finally {
-      setUpdatingId(null)
-    }
   }
 
   const totalPages = Math.ceil(total / LIMIT)
@@ -129,17 +85,10 @@ const Applications = () => {
       {/* ── Filter Bar ──────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 mb-8">
 
-        {/* Status filter */}
         <select
           value={filters.status}
           onChange={e => handleFilterChange('status', e.target.value)}
-          className="
-            px-4 py-2.5 rounded-lg text-sm font-medium
-            bg-surface-container-highest text-on-surface
-            outline-none border-2 border-transparent
-            focus:border-primary/30 focus:bg-white
-            transition-all duration-200
-          "
+          className="px-4 py-2.5 rounded-lg text-sm font-medium bg-surface-container-highest text-on-surface outline-none border-2 border-transparent focus:border-primary/30 focus:bg-white transition-all duration-200"
         >
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
@@ -147,17 +96,10 @@ const Applications = () => {
           <option value="rejected">Rejected</option>
         </select>
 
-        {/* Company filter */}
         <select
           value={filters.company_id}
           onChange={e => handleFilterChange('company_id', e.target.value)}
-          className="
-            px-4 py-2.5 rounded-lg text-sm font-medium
-            bg-surface-container-highest text-on-surface
-            outline-none border-2 border-transparent
-            focus:border-primary/30 focus:bg-white
-            transition-all duration-200
-          "
+          className="px-4 py-2.5 rounded-lg text-sm font-medium bg-surface-container-highest text-on-surface outline-none border-2 border-transparent focus:border-primary/30 focus:bg-white transition-all duration-200"
         >
           <option value="">All Companies</option>
           {companies.map(c => (
@@ -165,17 +107,10 @@ const Applications = () => {
           ))}
         </select>
 
-        {/* Programme filter */}
         <select
           value={filters.branch}
           onChange={e => handleFilterChange('branch', e.target.value)}
-          className="
-            px-4 py-2.5 rounded-lg text-sm font-medium
-            bg-surface-container-highest text-on-surface
-            outline-none border-2 border-transparent
-            focus:border-primary/30 focus:bg-white
-            transition-all duration-200
-          "
+          className="px-4 py-2.5 rounded-lg text-sm font-medium bg-surface-container-highest text-on-surface outline-none border-2 border-transparent focus:border-primary/30 focus:bg-white transition-all duration-200"
         >
           <option value="">All Programmes</option>
           {PROGRAMMES.map(p => (
@@ -183,19 +118,13 @@ const Applications = () => {
           ))}
         </select>
 
-        {/* Active filter count badge */}
         {Object.values(filters).some(Boolean) && (
           <button
             onClick={() => {
               setFilters({ status: '', company_id: '', branch: '' })
               setPage(1)
             }}
-            className="
-              flex items-center gap-1.5 px-4 py-2.5 rounded-lg
-              text-sm font-medium text-error
-              bg-error-container/30 hover:bg-error-container/50
-              transition-colors duration-200
-            "
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium text-error bg-error-container/30 hover:bg-error-container/50 transition-colors duration-200"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
               filter_list_off
@@ -204,7 +133,6 @@ const Applications = () => {
           </button>
         )}
 
-        {/* Result count — pushed right */}
         <div className="ml-auto flex items-center">
           <span className="text-sm text-on-surface-variant font-medium">
             {loading ? '...' : `${total} application${total !== 1 ? 's' : ''}`}
@@ -243,14 +171,11 @@ const Applications = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-
-              {/* Head */}
               <thead>
                 <tr className="bg-surface-container-low border-b border-surface-container">
                   {[
                     'Applicant', 'Roll No', 'Programme',
-                    'CGPA', 'Company', 'Applied On',
-                    'Status', 'Update Status'
+                    'CGPA', 'Company', 'Applied On', 'Status'
                   ].map(h => (
                     <th
                       key={h}
@@ -261,8 +186,6 @@ const Applications = () => {
                   ))}
                 </tr>
               </thead>
-
-              {/* Body */}
               <tbody>
                 {applications.map((app, idx) => (
                   <tr
@@ -270,11 +193,9 @@ const Applications = () => {
                     className={`
                       hover:bg-surface-container-low transition-colors duration-150
                       ${idx !== applications.length - 1
-                        ? 'border-b border-surface-container-low'
-                        : ''}
+                        ? 'border-b border-surface-container-low' : ''}
                     `}
                   >
-                    {/* Applicant name */}
                     <td className="px-6 py-4">
                       <p className="font-bold text-on-surface text-sm leading-none mb-1">
                         {app.student_name}
@@ -283,29 +204,21 @@ const Applications = () => {
                         {app.email || '—'}
                       </p>
                     </td>
-
-                    {/* Roll No */}
                     <td className="px-6 py-4">
                       <span className="font-mono text-xs text-on-surface-variant bg-surface-container px-2 py-1 rounded">
                         {app.roll_no}
                       </span>
                     </td>
-
-                    {/* Programme */}
                     <td className="px-6 py-4">
                       <span className="text-xs font-medium text-on-surface-variant">
                         {app.branch || '—'}
                       </span>
                     </td>
-
-                    {/* CGPA */}
                     <td className="px-6 py-4">
                       <span className="font-mono text-sm font-bold text-on-surface">
                         {app.cgpa || '—'}
                       </span>
                     </td>
-
-                    {/* Company */}
                     <td className="px-6 py-4">
                       <p className="text-sm font-semibold text-on-surface leading-none mb-1">
                         {app.company_name}
@@ -314,34 +227,13 @@ const Applications = () => {
                         {app.role || '—'}
                       </p>
                     </td>
-
-                    {/* Applied on */}
                     <td className="px-6 py-4">
                       <span className="font-mono text-xs text-on-surface-variant">
                         {formatDate(app.applied_at)}
                       </span>
                     </td>
-
-                    {/* Status badge */}
                     <td className="px-6 py-4">
                       <StatusBadge status={app.status} />
-                    </td>
-
-                    {/* Status changer */}
-                    <td className="px-6 py-4">
-                      {app.status === 'selected' ? (
-                        <span className="text-xs text-on-surface-variant font-medium italic">
-                          Finalised
-                        </span>
-                      ) : (
-                        <StatusSelect
-                          value={app.status}
-                          loading={updatingId === app.application_id}
-                          onChange={(val) =>
-                            handleStatusChange(app.application_id, val)
-                          }
-                        />
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -354,73 +246,45 @@ const Applications = () => {
       {/* ── Pagination ──────────────────────────────────── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-
           <p className="text-sm text-on-surface-variant font-medium">
             Page {page} of {totalPages}
           </p>
-
           <div className="flex items-center gap-2">
-
-            {/* Prev */}
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="
-                p-2 rounded-lg text-on-surface-variant
-                hover:bg-surface-container
-                disabled:opacity-30 disabled:cursor-not-allowed
-                transition-all duration-200
-              "
+              className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                 chevron_left
               </span>
             </button>
-
-            {/* Page numbers */}
             {[...Array(totalPages)].map((_, i) => {
               const p = i + 1
-              // Show first, last, current and neighbours only
-              if (
-                p === 1 || p === totalPages ||
-                Math.abs(p - page) <= 1
-              ) {
+              if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
                 return (
                   <button
                     key={p}
                     onClick={() => setPage(p)}
-                    className={`
-                      w-9 h-9 rounded-lg text-sm font-bold
-                      transition-all duration-200
-                      ${p === page
+                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all duration-200 ${
+                      p === page
                         ? 'btn-gradient text-white shadow-primary'
                         : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                      }
-                    `}
+                    }`}
                   >
                     {p}
                   </button>
                 )
               }
-              // Ellipsis
               if (Math.abs(p - page) === 2) {
-                return (
-                  <span key={p} className="text-on-surface-variant px-1">…</span>
-                )
+                return <span key={p} className="text-on-surface-variant px-1">…</span>
               }
               return null
             })}
-
-            {/* Next */}
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="
-                p-2 rounded-lg text-on-surface-variant
-                hover:bg-surface-container
-                disabled:opacity-30 disabled:cursor-not-allowed
-                transition-all duration-200
-              "
+              className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                 chevron_right

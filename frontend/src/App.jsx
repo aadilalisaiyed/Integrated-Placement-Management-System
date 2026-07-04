@@ -1,9 +1,10 @@
-// frontend/src/App.jsx
+// frontend/src/App.jsx — replace entire file
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import Login        from './pages/Login'
+import Signup       from './pages/Signup'
 import Dashboard    from './pages/Dashboard'
 import Companies    from './pages/Companies'
 import Applications from './pages/Applications'
@@ -16,7 +17,8 @@ function App() {
       <Routes>
 
         {/* Public */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/login"  element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -43,7 +45,7 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Student — login required per confirmed spec */}
+        {/* Student */}
         <Route path="/apply" element={
           <ProtectedRoute roles={['student']}>
             <Apply />

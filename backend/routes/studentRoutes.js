@@ -1,15 +1,23 @@
-const express = require("express");
-const router = express.Router();
+// backend/routes/studentRoutes.js
 
-const { verifyToken, authorizeRole } = require("../middleware/authMiddleware");
-const { getAllStudents } = require("../controllers/studentController");
+const express = require('express')
+const router  = express.Router()
 
-// Admin only
-router.get(
-  "/",
+const { verifyToken, authorizeRole } = require('../middleware/authMiddleware')
+const { getAllStudents, getMyProfile } = require('../controllers/studentController')
+
+// Admin + coordinator — full list
+router.get('/',
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole('admin', 'coordinator'),
   getAllStudents
-);
+)
 
-module.exports = router;
+// Student — their own profile
+router.get('/me',
+  verifyToken,
+  authorizeRole('student'),
+  getMyProfile
+)
+
+module.exports = router
