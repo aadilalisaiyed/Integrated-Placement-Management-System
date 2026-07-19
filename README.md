@@ -81,12 +81,6 @@ npm install
 
 Create a `.env` file in the `backend/` root directory:
 
-```env
-PORT=5000
-DATABASE_URL=postgresql://<user>:<password>@localhost:5432/placement_portal
-JWT_SECRET=your_super_secret_jwt_key
-NODE_ENV=development
-```
 
 Start the Express development server:
 
@@ -104,10 +98,6 @@ npm install
 ```
 
 Set up environment variables inside `.env.development` or `.env.production`:
-
-```env
-VITE_API_URL=http://localhost:5000/api
-```
 
 Start the Vite React development server:
 
